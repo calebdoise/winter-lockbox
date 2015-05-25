@@ -15,7 +15,13 @@ namespace WinterLockboxUnitTests
             var sharedKey = SymmetricKey.FromPassword(SymmetricKeyType.AES, "my shared key", 256);
             var entryStore = new InMemLockboxEntryStore();
 
-            var lockbox = new KeyValueLockbox(sharedKey, entryStore);
+            var lockbox = new KeyValueLockbox(
+                new KeyValueLockboxOptions
+                {
+                    GlobalSalt = SecureRandomBytes.GetRandomBytes(32),
+                    SymmetricKey = sharedKey,
+                    EntryStore = entryStore
+                });                
 
             lockbox.SetEntry("Hello", "World");
             lockbox.SetEntry("Blarg", "42");
@@ -52,6 +58,14 @@ namespace WinterLockboxUnitTests
             Assert.AreEqual(2, keyList.Count);
             Assert.IsTrue(keyList.Contains("Hello"));            
             Assert.IsTrue(keyList.Contains("Some other key"));
+
+            lockbox.SetEntry("blob data", new byte[] { 2, 4, 10, 42 });
+            byte[] bytes = lockbox.GetEntryValueBlob("blob data");
+            Assert.AreEqual(4, bytes.Length);
+            Assert.AreEqual(2, bytes[0]);
+            Assert.AreEqual(4, bytes[1]);
+            Assert.AreEqual(10, bytes[2]);
+            Assert.AreEqual(42, bytes[3]);
         }
     }
 }

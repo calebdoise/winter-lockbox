@@ -25,12 +25,21 @@ namespace WinterLockbox
 
         public LockboxEntryEncryptedData EncryptedKey { get; set; }
 
-        public LockboxEntryEncryptedData EncryptedValue { get; set; }        
+        public LockboxEntryEncryptedData EncryptedValue { get; set; }
+
+        public LockboxEntryValueType ValueType { get; set; }
     }
 
     public class LockboxEntryEncryptedData
     {
         public byte[] EncryptedBytes { get; set; }
         public byte[] IV { get; set; }
+    }
+
+    public enum LockboxEntryValueType : int
+    {
+        Unknown = 0,
+        String = 1,
+        Blob = 2
     }
 }

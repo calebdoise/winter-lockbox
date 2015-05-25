@@ -16,43 +16,61 @@ namespace WinterLockbox.InMem
         private ILockboxEntryStore entryStore;
         
 
-        public KeyValueLockbox(ISymmetricKey symmetricKey, ILockboxEntryStore entryStore)
+        public KeyValueLockbox(KeyValueLockboxOptions options)
         {
-            this.globalSalt = SecureRandomBytes.GetRandomBytes(32);
+            if (options == null)
+                throw new ArgumentNullException("options");
+            if (options.GlobalSalt == null)
+                throw new ArgumentNullException("options.GlobalSalt");
+            if (options.SymmetricKey == null)
+                throw new ArgumentNullException("options.SymmetricKey");
+            if (options.EntryStore == null)
+                throw new ArgumentNullException("options.EntryStore");
 
-            this.symmetricKey = symmetricKey;
-            this.entryStore = entryStore;
+            this.globalSalt = options.GlobalSalt;
+
+            this.symmetricKey = options.SymmetricKey;
+            this.entryStore = options.EntryStore;
         }
 
         public void SetEntry(string key, string value)
-        {
-            if (key == null)            
-                throw new ArgumentNullException("key");            
+        {                 
             if (value == null)            
-                throw new ArgumentNullException("value");            
+                throw new ArgumentNullException("value");
+
+            byte[] strBytes = Encoding.UTF8.GetBytes(value);
+            this.SetEntry(key, strBytes, LockboxEntryValueType.String);
+        }
+
+        public void SetEntry(string key, byte[] data)
+        {
+            this.SetEntry(key, data, LockboxEntryValueType.Blob);
+        }
+
+        private void SetEntry(string key, byte[] data, LockboxEntryValueType valueType)
+        {
+            if (key == null)
+                throw new ArgumentNullException("key");
+            if (data == null)
+                throw new ArgumentNullException("data");
 
             string keyHash = this.ComputeKeyHash(key);
 
-            IList<LockboxEntry> lockboxEntryList = this.entryStore.GetEntriesForKeyHash(keyHash);
-
             LockboxEntry newEntry = new LockboxEntry
             {
-                KeyHash = keyHash                
+                KeyHash = keyHash,
+                ValueType = valueType
             };
 
             // See if the entry already exists.
-            foreach (var existingEntry in lockboxEntryList)
+            var existingEntry = this.TryFindLockboxEntry(key, keyHash);
+            if (existingEntry != null)
             {
-                string existingEntryKey = this.DecryptString(existingEntry.EncryptedKey.EncryptedBytes, existingEntry.EncryptedKey.IV);
-                if (existingEntryKey == key)
-                {
-                    newEntry.EntryGuid = existingEntry.EntryGuid;
-                }
+                newEntry.EntryGuid = existingEntry.EntryGuid;
             }
-
-            if (newEntry.EntryGuid == null)
+            else
             {
-                newEntry.EntryGuid = Guid.NewGuid().ToString();                                
+                newEntry.EntryGuid = Guid.NewGuid().ToString();
             }
 
             byte[] encryptedKeyBytes;
@@ -63,11 +81,11 @@ namespace WinterLockbox.InMem
             {
                 EncryptedBytes = encryptedKeyBytes,
                 IV = keyIV
-            };           
+            };
 
             byte[] encryptedValueBytes;
             byte[] valueIV;
-            this.EncryptString(value, out encryptedValueBytes, out valueIV);
+            this.EncryptData(data, out encryptedValueBytes, out valueIV);
 
             newEntry.EncryptedValue = new LockboxEntryEncryptedData
             {
@@ -78,6 +96,7 @@ namespace WinterLockbox.InMem
             this.entryStore.SetEntry(newEntry);
         }
 
+
         public string GetEntryValueString(string key)
         {
             LockboxEntry entry = TryFindLockboxEntry(key);
@@ -86,13 +105,36 @@ namespace WinterLockbox.InMem
                 string entryKey = this.DecryptString(entry.EncryptedKey.EncryptedBytes, entry.EncryptedKey.IV);
                 if (entryKey == key)
                 {
-                    string entryValue = this.DecryptString(entry.EncryptedValue.EncryptedBytes, entry.EncryptedValue.IV);
-                    return entryValue;
+                    if (entry.ValueType == LockboxEntryValueType.String)
+                    {
+                        string entryValue = this.DecryptString(entry.EncryptedValue.EncryptedBytes, entry.EncryptedValue.IV);
+                        return entryValue;
+                    }
+                    else
+                    {
+                        throw new Exception("Entry is not a string: " + key);
+                    }
                 }
             }                                             
 
             throw new Exception("Entry not found: " + key);
-        }         
+        }
+
+        public byte[] GetEntryValueBlob(string key)
+        {
+            LockboxEntry entry = TryFindLockboxEntry(key);
+            if (entry != null)
+            {
+                string entryKey = this.DecryptString(entry.EncryptedKey.EncryptedBytes, entry.EncryptedKey.IV);
+                if (entryKey == key)
+                {
+                    byte[] decryptedBytes = this.symmetricKey.Decrypt(entry.EncryptedValue.EncryptedBytes, entry.EncryptedValue.IV);
+                    return decryptedBytes;                    
+                }
+            }
+
+            throw new Exception("Entry not found: " + key);
+        }
 
         public void DeleteEntry(string key)
         {
@@ -129,6 +171,16 @@ namespace WinterLockbox.InMem
                 throw new ArgumentNullException("key");
 
             string keyHash = this.ComputeKeyHash(key);
+
+            return this.TryFindLockboxEntry(key, keyHash);
+        }
+
+        private LockboxEntry TryFindLockboxEntry(string key, string keyHash)
+        {
+            if (key == null)
+                throw new ArgumentNullException("key");
+            if (keyHash == null)
+                throw new ArgumentNullException("keyHash");            
 
             IList<LockboxEntry> lockboxEntryList = this.entryStore.GetEntriesForKeyHash(keyHash);
 
@@ -173,8 +225,23 @@ namespace WinterLockbox.InMem
         {
             byte[] strBytes = Encoding.UTF8.GetBytes(str);
 
+            this.EncryptData(strBytes, out encryptedBytes, out iv);
+        }
+
+        private void EncryptData(byte[] data, out byte[] encryptedBytes, out byte[] iv)
+        {            
             iv = this.symmetricKey.GenerateIV();
-            encryptedBytes = this.symmetricKey.Encrypt(strBytes, iv);
-        }       
+            encryptedBytes = this.symmetricKey.Encrypt(data, iv);
+        }    
+    }
+
+
+    public class KeyValueLockboxOptions
+    {
+        public byte[] GlobalSalt { get; set; }
+
+        public ISymmetricKey SymmetricKey { get; set; }
+
+        public ILockboxEntryStore EntryStore { get; set; }
     }
 }

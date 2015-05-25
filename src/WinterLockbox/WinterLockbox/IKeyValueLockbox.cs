@@ -10,7 +10,10 @@ namespace WinterLockbox
     {
         void SetEntry(string key, string value);
 
+        void SetEntry(string key, byte[] data);
+
         string GetEntryValueString(string key);
+        byte[] GetEntryValueBlob(string key);
 
         void DeleteEntry(string key);
 
