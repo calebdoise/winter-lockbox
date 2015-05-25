@@ -42,6 +42,8 @@
       <HintPath>..\..\..\lib\FlowBasis-Latest\FlowBasis.Json.dll</HintPath>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Transactions" />
   </ItemGroup>
   <Choose>
     <When Condition="('$(VisualStudioVersion)' == '10.0' or '$(VisualStudioVersion)' == '') and '$(TargetFrameworkVersion)' == 'v3.5'">
@@ -60,6 +62,10 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\WinterLockbox.Sql\WinterLockbox.Sql.csproj">
+      <Project>{85a0e134-388a-4149-8748-9617ba7c2a11}</Project>
+      <Name>WinterLockbox.Sql</Name>
+    </ProjectReference>
     <ProjectReference Include="..\WinterLockbox\WinterLockbox.csproj">
       <Project>{f01dc0c8-301e-4fcb-8f9d-173590b75b0e}</Project>
       <Name>WinterLockbox</Name>
