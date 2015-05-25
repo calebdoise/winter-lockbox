@@ -17,7 +17,7 @@ namespace WinterLockboxUnitTests
         {
             AppDomain.CurrentDomain.SetData(
                 "DataDirectory",
-                context.TestDeploymentDir);
+                context.DeploymentDirectory);
         }
 
         [TestMethod]
@@ -78,6 +78,17 @@ namespace WinterLockboxUnitTests
 
             SqlLockboxEntryStoreMigrator sqlMigrator = new SqlLockboxEntryStoreMigrator(connectionString);
             sqlMigrator.MigrateToLatest();
+
+            SqlLockboxEntryStore sqlEntryStore = new SqlLockboxEntryStore(connectionString, "TestRepo1");
+            sqlEntryStore.Connect();
+
+            Test_Basic_Operations_With_Options(
+                new KeyValueLockboxOptions
+                {
+                    GlobalSalt = sqlEntryStore.GetGlobalSalt(),
+                    EntryStore = sqlEntryStore,
+                    SymmetricKey = SymmetricKey.FromPassword(SymmetricKeyType.AES, "some random password", 256)
+                });
         }
 
         private void Test_Basic_Operations_With_Options(KeyValueLockboxOptions lockboxOptions)

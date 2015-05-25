@@ -46,6 +46,8 @@ namespace WinterLockbox.EntryStores
                 {
                     Up_Migration_1(connection);
                 }
+
+                scope.Complete();
             }            
         }
 
@@ -61,8 +63,9 @@ namespace WinterLockbox.EntryStores
             {
                 cmd.CommandText = @"
 CREATE TABLE LockboxRepository(
-    Id int NOT NULL PRIMARY KEY,
-    Name nvarchar(255)
+    Id int NOT NULL PRIMARY KEY IDENTITY,
+    Name nvarchar(255),
+    GlobalSalt varbinary(max)
 );
 
 CREATE TABLE LockboxEntry(
@@ -82,7 +85,7 @@ CREATE TABLE LockboxEntry(
     )
 );
 
-CREATE INDEX IX_LockboxEntry_KeyHash ON LockboxEntry (KeyHash);
+CREATE INDEX IX_LockboxEntry_RepoIdKeyHash ON LockboxEntry (RepositoryId, KeyHash);
 ";
                 cmd.ExecuteNonQuery();
             }

@@ -30,6 +30,13 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="FlowBasis.Crypto, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\lib\FlowBasis-Latest\FlowBasis.Crypto.dll</HintPath>
+    </Reference>
+    <Reference Include="FlowBasis.Json">
+      <HintPath>..\..\..\lib\FlowBasis-Latest\FlowBasis.Json.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Transactions" />
@@ -40,8 +47,15 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="SqlLockboxEntryStore.cs" />
     <Compile Include="SqlLockboxEntryStoreMigrator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\WinterLockbox\WinterLockbox.csproj">
+      <Project>{f01dc0c8-301e-4fcb-8f9d-173590b75b0e}</Project>
+      <Name>WinterLockbox</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
