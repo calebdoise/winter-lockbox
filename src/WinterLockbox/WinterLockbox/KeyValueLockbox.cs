@@ -10,6 +10,10 @@ namespace WinterLockbox.InMem
 {
     public class KeyValueLockbox : IKeyValueLockbox
     {
+        // Used as placeholder entry to verify we have a valid lockbox store.
+        private const string LockboxEntryKey = ".--lockbox";
+        private const string LockboxEntryValue = "lockbox";
+
         private byte[] globalSalt;
 
         private ISymmetricKey symmetricKey;
@@ -31,6 +35,27 @@ namespace WinterLockbox.InMem
 
             this.symmetricKey = options.SymmetricKey;
             this.entryStore = options.EntryStore;
+
+            if (options.CreateNew)
+            {
+                // TODO: Verify that the lockbox entry does not already exist.
+                SetEntry(LockboxEntryKey, LockboxEntryValue);
+            }
+            else
+            {
+                try
+                {
+                    string lockboxEntryValue = GetEntryValueString(LockboxEntryKey);
+                    if (lockboxEntryValue != LockboxEntryValue)
+                    {
+                        throw new Exception("Unexpected lockbox entry value: " + lockboxEntryValue);
+                    }
+                }
+                catch (Exception)
+                {
+                    throw new Exception("Invalid key or unable to connect to lockbox.");
+                }
+            }
         }
 
         public void SetEntry(string key, string value)
@@ -158,7 +183,10 @@ namespace WinterLockbox.InMem
             foreach (var encryptedKey in encryptedKeyList)
             {
                 string entryKey = this.DecryptString(encryptedKey.EncryptedBytes, encryptedKey.IV);
-                keyList.Add(entryKey);
+                if (entryKey != LockboxEntryKey)
+                {
+                    keyList.Add(entryKey);
+                }
             }
 
             return keyList;
@@ -243,5 +271,7 @@ namespace WinterLockbox.InMem
         public ISymmetricKey SymmetricKey { get; set; }
 
         public ILockboxEntryStore EntryStore { get; set; }
+
+        public bool CreateNew { get; set; }
     }
 }

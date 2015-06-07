@@ -31,7 +31,8 @@ namespace WinterLockboxUnitTests
                 {
                     GlobalSalt = SecureRandomBytes.GetRandomBytes(32),
                     SymmetricKey = sharedKey,
-                    EntryStore = entryStore
+                    EntryStore = entryStore,
+                    CreateNew = true
                 });
         }
 
@@ -87,7 +88,8 @@ namespace WinterLockboxUnitTests
                 {
                     GlobalSalt = sqlEntryStore.GetGlobalSalt(),
                     EntryStore = sqlEntryStore,
-                    SymmetricKey = SymmetricKey.FromPassword(SymmetricKeyType.AES, "some random password", 256)
+                    SymmetricKey = SymmetricKey.FromPassword(SymmetricKeyType.AES, "some random password", 256),
+                    CreateNew = true
                 });
         }
 
