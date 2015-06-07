@@ -49,7 +49,7 @@ namespace WinterLockboxUnitTests
                 connection.Open();
 
                 using (var cmd = connection.CreateCommand())
-                {                    
+                {
                     cmd.CommandText = @"
                         IF EXISTS(SELECT * FROM sys.databases WHERE name = @dbName)
                         BEGIN
@@ -91,12 +91,71 @@ namespace WinterLockboxUnitTests
                     SymmetricKey = SymmetricKey.FromPassword(SymmetricKeyType.AES, "some random password", 256),
                     CreateNew = true
                 });
+
+
+            // Make sure we get exception when trying to connect with invalid key.
+            Exception caughtEx = null;
+            try
+            {
+                var lockbox = new KeyValueLockbox(
+                    new KeyValueLockboxOptions
+                    {
+                        GlobalSalt = sqlEntryStore.GetGlobalSalt(),
+                        EntryStore = sqlEntryStore,
+                        SymmetricKey = SymmetricKey.FromPassword(SymmetricKeyType.AES, "bad password", 256),
+                        CreateNew = false
+                    });
+            }
+            catch (Exception ex)
+            {
+                caughtEx = ex;
+            }
+
+            Assert.IsNotNull(caughtEx);
+            Assert.IsTrue(caughtEx.Message.ToLower().Contains("invalid key"));
+
+            // Make sure we get exception when trying to create new key store when it already has been created.
+            caughtEx = null;
+            try
+            {
+                var lockbox = new KeyValueLockbox(
+                    new KeyValueLockboxOptions
+                    {
+                        GlobalSalt = sqlEntryStore.GetGlobalSalt(),
+                        EntryStore = sqlEntryStore,
+                        SymmetricKey = SymmetricKey.FromPassword(SymmetricKeyType.AES, "some random password", 256),
+                        CreateNew = true
+                    });
+            }
+            catch (Exception ex)
+            {
+                caughtEx = ex;
+            }
+
+            Assert.IsNotNull(caughtEx);
+            Assert.IsTrue(caughtEx.Message.ToLower().Contains("already been initialized"));
+
+            // Reconnect to existing store and make sure we can still get an existing value.
+            {
+                var lockbox = new KeyValueLockbox(
+                    new KeyValueLockboxOptions
+                    {
+                        GlobalSalt = sqlEntryStore.GetGlobalSalt(),
+                        EntryStore = sqlEntryStore,
+                        SymmetricKey = SymmetricKey.FromPassword(SymmetricKeyType.AES, "some random password", 256),
+                        CreateNew = false
+                    });
+
+                string helloValue = lockbox.GetEntryValueString("Hello");
+                Assert.AreEqual("World", helloValue);
+            }
         }
 
         private void Test_Basic_Operations_With_Options(KeyValueLockboxOptions lockboxOptions)
         {
             var lockbox = new KeyValueLockbox(lockboxOptions);
 
+            lockbox.SetEntry("Hello", "Initial Value");
             lockbox.SetEntry("Hello", "World");
             lockbox.SetEntry("Blarg", "42");
             lockbox.SetEntry("Some other key", "this is the value to be encrypted");

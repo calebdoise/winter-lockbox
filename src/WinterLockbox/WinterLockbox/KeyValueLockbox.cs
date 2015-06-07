@@ -38,7 +38,13 @@ namespace WinterLockbox.InMem
 
             if (options.CreateNew)
             {
-                // TODO: Verify that the lockbox entry does not already exist.
+                // Verify that lockbox has not already been initialized.
+                var lockboxEntry = TryFindLockboxEntry(LockboxEntryKey);
+                if (lockboxEntry != null)
+                {
+                    throw new Exception("Lockbox has already been initialized.");
+                }
+                
                 SetEntry(LockboxEntryKey, LockboxEntryValue);
             }
             else
